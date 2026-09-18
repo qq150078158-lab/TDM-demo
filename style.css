@@ -253,6 +253,7 @@ input:checked + .slider:before {
 /* --- 日志详情区域样式 --- */
 .log-details-wrapper {
     display: flex;
+    flex-direction: column;   /* 由左右并排改为上下堆叠 */
     gap: 20px;
     width: 95%;
     max-width: 1600px;
@@ -276,9 +277,9 @@ input:checked + .slider:before {
     border: 1px solid #3a3a3a;
 }
 
-/* --- 拆分日志容器为左右两列 --- */
+/* --- 拆分日志容器：左右改为上下 --- */
 .log-column {
-     flex: 1;
+     flex: 0 0 auto;   /* 由 flex: 1 → flex: 0 0 auto */
      min-width: 0;
 }
 
