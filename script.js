@@ -21,6 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const marketSelect = document.getElementById('market-select');
     const frequencySelect = document.getElementById('frequency-select');
 
+    // --- 期货模拟相关 ---
+    const useLeverageCheckbox = document.getElementById('use-leverage');
+    const minLeverageInput = document.getElementById('min-leverage');
+    const maxLeverageInput = document.getElementById('max-leverage');
+    const maintenanceMarginRateInput = document.getElementById('maintenance-margin-rate');
+    const allowFloatingProfitToOpenCheckbox = document.getElementById('allow-floating-profit-to-open');
+
     // --- 版本与选项的配置映射 ---
     const VERSION_CONFIG = {
         'v0305_small': {
@@ -29,6 +36,48 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
     };
+
+    // 数值裁剪
+    function clampNumber(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    // 按最大杠杆计算默认维持保证金率
+    function calcDefaultMaintenanceMarginRate(maxLeverage) {
+        const maxLev = clampNumber(parseFloat(maxLeverage) || 1, 1, 20);
+        return clampNumber(1 / maxLev / 2, 0.01, 1.0);
+    }
+
+    // 同步杠杆相关控件的启用状态
+    function syncLeverageControls() {
+        const enabled = useLeverageCheckbox.checked;
+
+        minLeverageInput.disabled = !enabled;
+        maxLeverageInput.disabled = !enabled;
+        maintenanceMarginRateInput.disabled = !enabled;
+        allowFloatingProfitToOpenCheckbox.disabled = !enabled;
+
+        if (!enabled) {
+            // 未启用杠杆：强制 1 倍，浮盈开仓关闭
+            minLeverageInput.value = 1;
+            maxLeverageInput.value = 1;
+            maintenanceMarginRateInput.value = '0.1';
+            allowFloatingProfitToOpenCheckbox.checked = false;
+        } else {
+            // 启用杠杆：保证合理默认值
+            let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
+            let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
+            if (minLev > maxLev) minLev = maxLev;
+
+            minLeverageInput.value = minLev;
+            maxLeverageInput.value = maxLev;
+
+            // 如果维持保证金率没有被用户手动改过，则按默认公式刷新
+            if (maintenanceMarginRateInput.dataset.auto !== 'false') {
+                maintenanceMarginRateInput.value = calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
+            }
+        }
+    }
 
     // --- 动态更新下拉框选项的逻辑 ---
     function updateDropdownOptions() {
@@ -158,6 +207,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 初始化页面时运行一次以设置正确状态 ---
     updateDropdownOptions();
 
+
+    // 初始化杠杆控件状态
+    syncLeverageControls();
+
+    // 启用杠杆开关
+    useLeverageCheckbox.addEventListener('change', () => {
+        if (useLeverageCheckbox.checked) {
+            maintenanceMarginRateInput.dataset.auto = 'true';
+            const maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
+            maintenanceMarginRateInput.value = calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
+        }
+        syncLeverageControls();
+    });
+
+    // 最大杠杆变化
+    maxLeverageInput.addEventListener('input', () => {
+        let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
+        let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
+        if (minLev > maxLev) minLev = maxLev;
+
+        minLeverageInput.value = minLev;
+        maxLeverageInput.value = maxLev;
+
+        if (maintenanceMarginRateInput.dataset.auto !== 'false') {
+            maintenanceMarginRateInput.value = calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
+        }
+    });
+
+    // 最小杠杆变化
+    minLeverageInput.addEventListener('input', () => {
+        let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
+        let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
+        if (minLev > maxLev) maxLev = minLev;
+
+        minLeverageInput.value = minLev;
+        maxLeverageInput.value = maxLev;
+    });
+
+    // 用户手动修改维持保证金率
+    maintenanceMarginRateInput.addEventListener('input', () => {
+        maintenanceMarginRateInput.dataset.auto = 'false';
+        const mmr = clampNumber(parseFloat(maintenanceMarginRateInput.value) || 0.1, 0.01, 1.0);
+        maintenanceMarginRateInput.value = mmr;
+    });
+
+
     // --- 页面加载时，按钮默认为不可用 ---
     runButton.disabled = true;
 
@@ -217,6 +312,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const confidenceThreshold = parseFloat(document.getElementById('confidence-threshold').value);
         const allowShort = document.getElementById('allow-short').checked;
 
+        const useLeverage = useLeverageCheckbox.checked;
+        let minLeverage = parseFloat(minLeverageInput.value) || 1;
+        let maxLeverage = parseFloat(maxLeverageInput.value) || 1;
+        let maintenanceMarginRate = parseFloat(maintenanceMarginRateInput.value) || 0.1;
+        const allowFloatingProfitToOpen = allowFloatingProfitToOpenCheckbox.checked;
+
+        // 未启用杠杆时，强制 1 倍
+        if (!useLeverage) {
+            minLeverage = 1;
+            maxLeverage = 1;
+        }
+
         // --- 校验代码 ---
         if (!stockCode || stockCode.trim() === "") {
             alert("请输入代码 (Code)");
@@ -248,7 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     stock_code: stockCode,
                     kline_window_size: parseInt(klineWindowSize, 10),
                     confidence_threshold: confidenceThreshold,
-                    allow_short: allowShort
+                    allow_short: allowShort,
+                    use_leverage: useLeverage,
+                    min_leverage: minLeverage,
+                    max_leverage: maxLeverage,
+                    maintenance_margin_rate: maintenanceMarginRate,
+                    allow_floating_profit_to_open: allowFloatingProfitToOpen,
                 })
             });
 
@@ -276,35 +388,75 @@ document.addEventListener('DOMContentLoaded', () => {
             const modelSimResults = chartDataStore.model_simulation_results;
 
             // 辅助函数，用于填充结果区域
-            function populateResults(element, results) {
-                if (results) {
-                    element.innerHTML = `
-                        <div class="result-item">
-                            <span class="result-item-label">End-point Returns:</span>
-                            <span class="result-item-value">${(results.final_return_rate * 100).toFixed(2)}%</span>
-                        </div>
-                        <div class="result-item">
-                            <span class="result-item-label">Sharp Ratio:</span>
-                            <span class="result-item-value">${results.sharpe_ratio.toFixed(3)}</span>
-                        </div>
-                        <div class="result-item">
-                            <span class="result-item-label">Max Drawdown:</span>
-                            <span class="result-item-value">${(results.max_drawdown * 100).toFixed(2)}%</span>
-                        </div>
-                    `;
-                } else {
-                    // 确保此逻辑只针对 model-results-content
+            function populateResults(element, results, config, stats) {
+                if (!results) {
                     if (element.id === 'model-results-content') {
                         setEmptyModelResults();
                     } else {
                         element.innerHTML = '<div class="result-item"><span class="result-item-label">No data</span></div>';
                     }
+                    return;
                 }
+
+                let html = `
+                    <div class="result-item">
+                        <span class="result-item-label">End-point Returns:</span>
+                        <span class="result-item-value">${(results.final_return_rate * 100).toFixed(2)}%</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-item-label">Sharp Ratio:</span>
+                        <span class="result-item-value">${results.sharpe_ratio.toFixed(3)}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-item-label">Max Drawdown:</span>
+                        <span class="result-item-value">${(results.max_drawdown * 100).toFixed(2)}%</span>
+                    </div>
+                `;
+
+                if (config) {
+                    const leverageText = config.use_leverage
+                        ? `${config.min_leverage.toFixed(1)}x - ${config.max_leverage.toFixed(1)}x`
+                        : 'Disabled';
+
+                    html += `
+                        <div class="result-item">
+                            <span class="result-item-label">Leverage:</span>
+                            <span class="result-item-value">${leverageText}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-item-label">Maintenance Margin:</span>
+                            <span class="result-item-value">${(config.maintenance_margin_rate * 100).toFixed(2)}%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-item-label">Floating Profit Open:</span>
+                            <span class="result-item-value">${config.allow_floating_profit_to_open ? 'Yes' : 'No'}</span>
+                        </div>
+                    `;
+                }
+
+                if (stats) {
+                    html += `
+                        <div class="result-item">
+                            <span class="result-item-label">Forced Close:</span>
+                            <span class="result-item-value">${stats.forced_close_count}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-item-label">Max Leverage Used:</span>
+                            <span class="result-item-value">${stats.max_leverage_used.toFixed(2)}x</span>
+                        </div>
+                    `;
+                }
+
+                element.innerHTML = html;
             }
 
             // 分别填充最优策略和模型策略的结果
-            // populateResults(optimalResultsContent, optimalSimResults);
-            populateResults(modelResultsContent, modelSimResults);
+            populateResults(
+                modelResultsContent,
+                modelSimResults,
+                chartDataStore.simulation_config,
+                chartDataStore.simulation_stats
+            );
 
             const { modelMarkPoints, categories, klineValues, volumeValues, modelAssetCurve } = prepareChartData(chartDataStore);
 

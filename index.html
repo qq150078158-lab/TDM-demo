@@ -104,7 +104,7 @@ For any inquiries, please contact us at qq150078158@gmail.com.
                         <option value="A Stocks" selected>A Stocks</option>
                         <option value="US Stocks">US Stocks</option>
                         <option value="HongKong Stocks">HongKong Stocks</option>
-                        <option value="Crypto">US Stocks</option>
+                        <option value="Crypto">Crypto</option>
                     </select>
                 </div>
                 <div class="control-group">
@@ -150,6 +150,40 @@ For any inquiries, please contact us at qq150078158@gmail.com.
                     <label class="switch">
                       <input type="checkbox" id="allow-short">
                       <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 第三行：期货模拟参数 -->
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="use-leverage">Use Leverage</label>
+                    <label class="switch">
+                        <input type="checkbox" id="use-leverage">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label for="min-leverage">Min Leverage</label>
+                    <input type="number" id="min-leverage" value="1" min="1" max="20" step="1" disabled>
+                </div>
+
+                <div class="control-group">
+                    <label for="max-leverage">Max Leverage</label>
+                    <input type="number" id="max-leverage" value="5" min="1" max="20" step="1" disabled>
+                </div>
+
+                <div class="control-group">
+                    <label for="maintenance-margin-rate">Maintenance Margin</label>
+                    <input type="number" id="maintenance-margin-rate" value="0.1" min="0.01" max="1" step="0.01" disabled>
+                </div>
+
+                <div class="control-group">
+                    <label for="allow-floating-profit-to-open">Floating Profit to Open</label>
+                    <label class="switch">
+                        <input type="checkbox" id="allow-floating-profit-to-open" disabled>
+                        <span class="slider"></span>
                     </label>
                 </div>
             </div>

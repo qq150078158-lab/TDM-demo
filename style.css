@@ -516,3 +516,16 @@ a.info-item {
 .autocomplete-items::-webkit-scrollbar-thumb:hover {
     background: #777;
 }
+
+
+/* --- 为了让禁用的数字输入和开关更明显 --- */
+.controls input:disabled,
+.controls select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.switch input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
