@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxLeverageInput = document.getElementById('max-leverage');
     const maintenanceMarginRateInput = document.getElementById('maintenance-margin-rate');
     const allowFloatingProfitToOpenCheckbox = document.getElementById('allow-floating-profit-to-open');
+    let savedLeverageConfig = null;
 
     // --- 版本与选项的配置映射 ---
     const VERSION_CONFIG = {
@@ -66,26 +67,58 @@ document.addEventListener('DOMContentLoaded', () => {
         allowFloatingProfitToOpenCheckbox.disabled = !enabled;
 
         if (!enabled) {
-            // 未启用杠杆
+            // ---------- 未启用杠杆 ----------
             if (!preserveValues) {
-                // 取消勾选：强制回到 1 倍，浮盈开仓关闭
+                // 用户主动取消勾选：先快照当前配置，再视觉上重置为"无杠杆"状态
+                if (savedLeverageConfig === null) {
+                    savedLeverageConfig = {
+                        minLeverage: minLeverageInput.value,
+                        maxLeverage: maxLeverageInput.value,
+                        maintenanceMarginRate: maintenanceMarginRateInput.value,
+                        maintenanceMarginRateAuto:
+                            maintenanceMarginRateInput.dataset.auto || 'true',
+                        allowFloatingProfitToOpen: allowFloatingProfitToOpenCheckbox.checked,
+                    };
+                }
+                // 视觉重置（仅 UI 层，不影响已保存的快照）
                 minLeverageInput.value = 1;
                 maxLeverageInput.value = 1;
                 maintenanceMarginRateInput.value = '0.1';
                 allowFloatingProfitToOpenCheckbox.checked = false;
             }
+            // preserveValues=true（初始化）时：保留 HTML 默认值不动
         } else {
-            // 启用杠杆
-            let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
-            let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
-            if (minLev > maxLev) minLev = maxLev;
+            // ---------- 启用杠杆 ----------
+            if (savedLeverageConfig !== null) {
+                // 存在快照：完整恢复用户上次的配置
+                let minLev = clampNumber(parseFloat(savedLeverageConfig.minLeverage) || 1, 1, 20);
+                let maxLev = clampNumber(parseFloat(savedLeverageConfig.maxLeverage) || 5, 1, 20);
+                if (minLev > maxLev) minLev = maxLev;
 
-            minLeverageInput.value = minLev;
-            maxLeverageInput.value = maxLev;
+                minLeverageInput.value = minLev;
+                maxLeverageInput.value = maxLev;
+                maintenanceMarginRateInput.value = savedLeverageConfig.maintenanceMarginRate;
+                maintenanceMarginRateInput.dataset.auto =
+                    savedLeverageConfig.maintenanceMarginRateAuto;
+                allowFloatingProfitToOpenCheckbox.checked =
+                    savedLeverageConfig.allowFloatingProfitToOpen;
 
-            // 如果维持保证金率没有被用户手动改过，则按默认公式刷新
-            if (maintenanceMarginRateInput.dataset.auto !== 'false') {
-                maintenanceMarginRateInput.value = calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
+                // 快照用后即弃，避免污染
+                savedLeverageConfig = null;
+            } else {
+                // 首次勾选（或初始化后第一次勾选）
+                // 读取当前 UI 值
+                let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
+                let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
+                if (minLev > maxLev) minLev = maxLev;
+
+                minLeverageInput.value = minLev;
+                maxLeverageInput.value = maxLev;
+
+                // 首次进入启用状态
+                maintenanceMarginRateInput.dataset.auto = 'true';
+                maintenanceMarginRateInput.value =
+                    calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
             }
         }
     }
@@ -224,11 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 启用杠杆开关
     useLeverageCheckbox.addEventListener('change', () => {
-        if (useLeverageCheckbox.checked) {
-            maintenanceMarginRateInput.dataset.auto = 'true';
-            const maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
-            maintenanceMarginRateInput.value = calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
-        }
         syncLeverageControls();
     });
 
