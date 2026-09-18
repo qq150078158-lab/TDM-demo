@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 同步杠杆相关控件的启用状态
-    function syncLeverageControls() {
+    function syncLeverageControls({ preserveValues = false } = {}) {
         const enabled = useLeverageCheckbox.checked;
 
         minLeverageInput.disabled = !enabled;
@@ -66,13 +66,16 @@ document.addEventListener('DOMContentLoaded', () => {
         allowFloatingProfitToOpenCheckbox.disabled = !enabled;
 
         if (!enabled) {
-            // 未启用杠杆：强制 1 倍，浮盈开仓关闭
-            minLeverageInput.value = 1;
-            maxLeverageInput.value = 1;
-            maintenanceMarginRateInput.value = '0.1';
-            allowFloatingProfitToOpenCheckbox.checked = false;
+            // 未启用杠杆
+            if (!preserveValues) {
+                // 取消勾选：强制回到 1 倍，浮盈开仓关闭
+                minLeverageInput.value = 1;
+                maxLeverageInput.value = 1;
+                maintenanceMarginRateInput.value = '0.1';
+                allowFloatingProfitToOpenCheckbox.checked = false;
+            }
         } else {
-            // 启用杠杆：保证合理默认值
+            // 启用杠杆
             let minLev = clampNumber(parseFloat(minLeverageInput.value) || 1, 1, 20);
             let maxLev = clampNumber(parseFloat(maxLeverageInput.value) || 5, 1, 20);
             if (minLev > maxLev) minLev = maxLev;
@@ -217,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // 初始化杠杆控件状态
-    syncLeverageControls();
+    syncLeverageControls({ preserveValues: true });
 
     // 启用杠杆开关
     useLeverageCheckbox.addEventListener('change', () => {
