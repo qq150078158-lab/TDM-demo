@@ -37,6 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     };
 
+    // 由 renderTradeLog / renderAccountHistory 共用
+    // 格式化已实现/未实现盈亏：带符号 + 两位小数
+    function formatPnl(v) {
+        const n = Number(v) || 0;
+        const sign = n >= 0 ? '+' : '';
+        return `${sign}${n.toFixed(2)}`;
+    }
+
     // 数值裁剪
     function clampNumber(value, min, max) {
         return Math.min(max, Math.max(min, value));
@@ -796,51 +804,174 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById(elementId);
         if (!container) return;
 
-        container.innerHTML = ''; // 清空旧日志
+        container.innerHTML = '';
         if (!logData || logData.length === 0) {
             container.innerHTML = '<div>No trades executed.</div>';
             return;
         }
 
+        // 从全局数据存储中读取模拟配置，用于场景自适应
+        const simCfg = (chartDataStore && chartDataStore.simulation_config) || {};
+        const useLeverage = !!simCfg.use_leverage;
+
+        // 交易类型映射表：type → { CSS 类, 展示标签 }
+        // 后端 type 枚举：
+        //   'open' | 'add' | 'reduce' | 'close' | 'force_reduce' | 'force_close'
+        const TYPE_META = {
+            open:         { cls: 'log-action-open',         label: 'OPEN' },
+            add:          { cls: 'log-action-add',          label: 'ADD' },
+            reduce:       { cls: 'log-action-reduce',       label: 'REDUCE' },
+            close:        { cls: 'log-action-close',        label: 'CLOSE' },
+            force_reduce: { cls: 'log-action-force-reduce', label: 'FORCE REDUCE' },
+            force_close:  { cls: 'log-action-force-close',  label: 'FORCE CLOSE' },
+        };
+
         logData.forEach(entry => {
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
+            // 强平类事件整行加浅红底色
+            if (entry.type === 'force_reduce' || entry.type === 'force_close') {
+                logEntry.classList.add('log-entry-danger');
+            }
 
-            const actionClass = `log-action-${entry.type}`;
+            const meta = TYPE_META[entry.type] || { cls: '', label: (entry.type || '').toUpperCase() };
+            const dirCls = entry.direction === 'long' ? 'log-pos-long'
+                         : entry.direction === 'short' ? 'log-pos-short'
+                         : 'log-pos-hold';
+            const dirLabel = (entry.direction || '').toUpperCase();
 
-            logEntry.innerHTML =
+            const qty = Number(entry.quantity) || 0;
+            const price = Number(entry.price) || 0;
+            const tradeValue = qty * price;
+
+            // 已实现盈亏：仅减/平仓类交易语义有效
+            const hasPnl = entry.type !== 'open' && entry.type !== 'add'
+                           && entry.pnl !== undefined && entry.pnl !== null;
+            const pnlClass = (Number(entry.pnl) >= 0) ? 'log-pnl-pos' : 'log-pnl-neg';
+
+            // --- 组装基础行 ---
+            let html =
                 `<span class="log-step">Step ${entry.step}:</span>` +
-                `<span class="${actionClass}">${entry.type.toUpperCase()} ${entry.direction.toUpperCase()}</span> ` +
-                `| Qty: ${entry.quantity.toFixed(4)} @ ${entry.price.toFixed(4)} ` +
-                `| Fee: ${entry.fee.toFixed(2)}`;
+                `<span class="${meta.cls}">${meta.label}</span> ` +
+                `<span class="${dirCls}">${dirLabel}</span>` +
+                ` | Qty: ${qty.toFixed(4)} @ ${price.toFixed(4)}` +
+                ` | Value: ${tradeValue.toFixed(2)}` +
+                ` | Fee: ${(Number(entry.fee) || 0).toFixed(2)}`;
+
+            // --- PnL（仅减/平仓） ---
+            if (hasPnl) {
+                html += ` | PnL: <span class="${pnlClass}">${formatPnl(entry.pnl)}</span>`;
+            }
+
+            // --- 期货模式：杠杆 + 保证金 ---
+            if (useLeverage) {
+                html += ` | Lev: ${(Number(entry.leverage) || 1).toFixed(2)}x`;
+                if (Number(entry.margin) > 0) {
+                    html += ` | Margin: ${Number(entry.margin).toFixed(2)}`;
+                }
+            }
+
+            // --- 交易后持仓（自洽性关键字段） ---
+            const posAfter = Number(entry.position_after) || 0;
+            if (posAfter > 1e-9) {
+                html += ` | → Pos: ${posAfter.toFixed(4)}`;
+                if (Number(entry.avg_open_price_after) > 1e-9) {
+                    html += ` @ ${Number(entry.avg_open_price_after).toFixed(4)}`;
+                }
+            } else {
+                html += ` | → Flat`;
+            }
+
+            logEntry.innerHTML = html;
             container.appendChild(logEntry);
         });
     }
 
+    // --- 渲染 Account History ---
     function renderAccountHistory(elementId, historyData) {
         const container = document.getElementById(elementId);
         if (!container) return;
 
-        container.innerHTML = ''; // 清空旧历史
+        container.innerHTML = '';
         if (!historyData || historyData.length === 0) {
             container.innerHTML = '<div>No account history available.</div>';
             return;
         }
 
+        const simCfg = (chartDataStore && chartDataStore.simulation_config) || {};
+        const useLeverage = !!simCfg.use_leverage;
+
         historyData.forEach(entry => {
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
+            if (entry.is_forced_close) {
+                logEntry.classList.add('log-entry-danger');
+            }
 
-            const posClass = `log-pos-${entry.position_direction}`;
+            const posDir = entry.position_direction || 'hold';
+            const posClass = `log-pos-${posDir}`;
+            const posLabel = posDir.toUpperCase();
 
-            logEntry.innerHTML =
+            const totalAssets = Number(entry.total_assets) || 0;
+            const cash = Number(entry.available_funds) || 0;
+            const posMV = Number(entry.position_market_value) || 0;
+            const margin = Number(entry.occupied_margin) || 0;
+            const posQty = Number(entry.position_quantity) || 0;
+            const avgPrice = Number(entry.avg_open_price) || 0;
+            const uPnl = Number(entry.unrealized_pnl) || 0;
+            const lev = Number(entry.leverage) || 1;
+            const dd = Number(entry.drawdown) || 0;
+
+            // --- 基础字段：总资产 / 现金 ---
+            let html =
                 `<span class="log-step">Step ${entry.step}:</span>` +
-                `Assets: ${entry.total_assets.toFixed(2)} | ` +
-                `Equity: ${entry.position_market_value.toFixed(2)} | ` +
-                `Cash: ${entry.available_funds.toFixed(2)} | ` +
-                `Pos: <span class="${posClass}">${entry.position_direction}</span> ` +
-                `(${entry.position_quantity.toFixed(4)})`;
+                `Assets: ${totalAssets.toFixed(2)}` +
+                ` | Cash: ${cash.toFixed(2)}`;
 
+            // --- 持仓市值（有持仓时展示） ---
+            // 语义修正：此处原为 "Equity"，但实际展示的是 position_market_value，
+            // 正确术语应为 PosMV (Position Market Value)。
+            if (posMV > 1e-9) {
+                html += ` | PosMV: ${posMV.toFixed(2)}`;
+            }
+
+            // --- 期货模式：占用保证金 ---
+            if (useLeverage && margin > 1e-9) {
+                html += ` | Margin: ${margin.toFixed(2)}`;
+            }
+
+            // --- 持仓方向 / 数量 / 均价 ---
+            html += ` | Pos: <span class="${posClass}">${posLabel}</span>`;
+            if (posQty > 1e-9) {
+                html += ` (${posQty.toFixed(4)}`;
+                if (avgPrice > 1e-9) {
+                    html += ` @ ${avgPrice.toFixed(4)}`;
+                }
+                html += `)`;
+            }
+
+            // --- 未实现盈亏（仅持仓时有意义） ---
+            if (posDir !== 'hold' && Math.abs(uPnl) > 1e-9) {
+                const upnlClass = uPnl >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
+                html += ` | uPnL: <span class="${upnlClass}">${formatPnl(uPnl)}</span>`;
+            }
+
+            // --- 期货模式：动态杠杆（持仓市值 / 占用保证金） ---
+            if (useLeverage && posDir !== 'hold') {
+                html += ` | Lev: ${lev.toFixed(2)}x`;
+            }
+
+            // --- 回撤（非零时展示） ---
+            if (dd > 1e-9) {
+                html += ` | DD: ${(dd * 100).toFixed(2)}%`;
+            }
+
+            // --- 强平事件标记 ---
+            if (entry.is_forced_close) {
+                html += ` | <span class="log-warn">[FORCED CLOSE]</span>`;
+            }
+
+            logEntry.innerHTML = html;
             container.appendChild(logEntry);
         });
     }
