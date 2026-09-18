@@ -364,9 +364,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
+            // 先读 Content-Type，再决定解析方式
+            const contentType = response.headers.get('content-type') || '';
+            const isJson = contentType.includes('application/json');
+
+            // --- 非 2xx ---
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || 'Unknown error'}`);
+                let detail;
+                if (isJson) {
+                    const errorData = await response.json().catch(() => ({}));
+                    detail = errorData.detail
+                        || errorData.hf_response_body
+                        || JSON.stringify(errorData).slice(0, 300);
+                } else {
+                    // 纯文本（例如 Vercel "An error occurred..."、502/504 网关页）
+                    const text = await response.text();
+                    detail = '网关/平台错误: ${text.slice(0, 300)}';
+                }
+                throw new Error('HTTP ${response.status}: ${detail}');
+            }
+
+            // --- 2xx 但 body 不是 JSON ---
+            if (!isJson) {
+                const text = await response.text();
+                throw new Error('服务器返回了非 JSON 内容: ${text.slice(0, 300)}');
             }
 
             // 将获取到的数据存入全局变量
@@ -384,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 显示模型策略的模拟交易结果 ---
             const modelResultsContent = document.getElementById('model-results-content');
 
-            // const optimalSimResults = chartDataStore.optimal_simulation_results;
             const modelSimResults = chartDataStore.model_simulation_results;
 
             // 辅助函数，用于填充结果区域
@@ -461,7 +481,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const { modelMarkPoints, categories, klineValues, volumeValues, modelAssetCurve } = prepareChartData(chartDataStore);
 
             // 渲染图表
-            // renderChart(optimalChart, 'Optimal Strategy', categories, klineValues, optimalMarkPoints, volumeValues, optimalAssetCurve);
             renderChart(modelChart, 'Model Inference', categories, klineValues, modelMarkPoints, volumeValues, modelAssetCurve);
 
             // --- 渲染详细日志 ---

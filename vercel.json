@@ -2,7 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/proxy.js": {
-      "maxDuration": 45
+      "maxDuration": 60
+    },
+    "api/synapar_api_inference.js": {
+      "maxDuration": 60
     }
   }
 }
