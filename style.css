@@ -112,7 +112,7 @@ h3 {
     border-radius: 6px;
     padding: 8px 10px;
     font-size: 14px;
-    width: 80px;
+    width: 60px;
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
@@ -122,9 +122,16 @@ h3 {
     box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
 }
 
-/* --- 为置信度输入框设置一个较小的宽度 --- */
+/* --- 输入框宽度 --- */
+#kline-window-size,
 #confidence-threshold {
     width: 60px;
+}
+
+/* --- 杠杆相关输入框宽度 --- */
+#min-leverage,
+#max-leverage {
+    width: 40px;
 }
 
 .switch {
