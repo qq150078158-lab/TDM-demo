@@ -875,10 +875,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const price = Number(entry.price) || 0;
             const tradeValue = qty * price;
 
-            // 已实现盈亏：仅减/平仓类交易语义有效
-            const hasPnl = entry.type !== 'open' && entry.type !== 'add'
-                           && entry.pnl !== undefined && entry.pnl !== null;
-            const pnlClass = (Number(entry.pnl) >= 0) ? 'log-pnl-pos' : 'log-pnl-neg';
+            // 已实现盈亏：仅减/平仓类交易语义有效，且仅在数值非零时显示
+            //   模拟器启用了逐 K 线盯市结算，avg_open_price 在每步已被更新为执行价，
+            //   因此平/减仓时 pnl 通常为 0，此时显示 "PnL: +0.00" 没有意义且会误导用户
+            const pnlVal = Number(entry.pnl);
+            const pnlRelevant = entry.type !== 'open' && entry.type !== 'add'
+                                && entry.pnl !== undefined && entry.pnl !== null;
+            const shouldShowPnl = pnlRelevant && Math.abs(pnlVal) > 1e-9;
 
             // --- 组装基础行 ---
             let html =
@@ -889,9 +892,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` | Value: ${tradeValue.toFixed(2)}` +
                 ` | Fee: ${(Number(entry.fee) || 0).toFixed(2)}`;
 
-            // --- PnL（仅减/平仓） ---
-            if (hasPnl) {
-                html += ` | PnL: <span class="${pnlClass}">${formatPnl(entry.pnl)}</span>`;
+            // --- PnL（仅减/平仓且数值非零时显示） ---
+            if (shouldShowPnl) {
+                const pnlClass = pnlVal >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
+                html += ` | PnL: <span class="${pnlClass}">${formatPnl(pnlVal)}</span>`;
             }
 
             // --- 期货模式：杠杆 + 保证金 ---
