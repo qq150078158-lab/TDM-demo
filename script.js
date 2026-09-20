@@ -875,13 +875,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const price = Number(entry.price) || 0;
             const tradeValue = qty * price;
 
-            // 已实现盈亏：仅减/平仓类交易语义有效，且仅在数值非零时显示
-            //   模拟器启用了逐 K 线盯市结算，avg_open_price 在每步已被更新为执行价，
-            //   因此平/减仓时 pnl 通常为 0，此时显示 "PnL: +0.00" 没有意义且会误导用户
+            // 已实现盈亏：仅减/平仓类交易语义有效
             const pnlVal = Number(entry.pnl);
             const pnlRelevant = entry.type !== 'open' && entry.type !== 'add'
                                 && entry.pnl !== undefined && entry.pnl !== null;
             const shouldShowPnl = pnlRelevant && Math.abs(pnlVal) > 1e-9;
+
+            // --- 本步盯市结算盈亏（每日无负债结算） ---
+            // 反映本时间步内持仓按收盘价结算产生的浮动盈亏
+            // 由于结算已并入 available_funds，故平仓时 pnl 常为 0，但 settled_pnl 可正可负
+            const settledVal = Number(entry.settled_pnl);
+            const shouldShowSettled = entry.settled_pnl !== undefined
+                                      && entry.settled_pnl !== null
+                                      && Math.abs(settledVal) > 1e-9;
 
             // --- 组装基础行 ---
             let html =
@@ -892,10 +898,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` | Value: ${tradeValue.toFixed(2)}` +
                 ` | Fee: ${(Number(entry.fee) || 0).toFixed(2)}`;
 
-            // --- PnL（仅减/平仓且数值非零时显示） ---
+            // --- PnL（减/平仓且非零时显示；盯市场景下通常为 0） ---
             if (shouldShowPnl) {
                 const pnlClass = pnlVal >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
                 html += ` | PnL: <span class="${pnlClass}">${formatPnl(pnlVal)}</span>`;
+            }
+
+            // --- 本步盯市盈亏（每日无负债结算） ---
+            if (shouldShowSettled) {
+                const settledClass = settledVal >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
+                html += ` | MTM: <span class="${settledClass}">${formatPnl(settledVal)}</span>`;
             }
 
             // --- 期货模式：杠杆 + 保证金 ---
@@ -956,6 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const uPnl = Number(entry.unrealized_pnl) || 0;
             const lev = Number(entry.leverage) || 1;
             const dd = Number(entry.drawdown) || 0;
+            const settledVal = Number(entry.settled_pnl);
 
             // --- 基础字段：总资产 / 现金 ---
             let html =
@@ -989,6 +1002,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (posDir !== 'hold' && Math.abs(uPnl) > 1e-9) {
                 const upnlClass = uPnl >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
                 html += ` | uPnL: <span class="${upnlClass}">${formatPnl(uPnl)}</span>`;
+            }
+
+            // --- 本步盯市结算盈亏 ---
+            if (entry.settled_pnl !== undefined
+                && entry.settled_pnl !== null
+                && Math.abs(settledVal) > 1e-9) {
+                const settledClass = settledVal >= 0 ? 'log-pnl-pos' : 'log-pnl-neg';
+                html += ` | MTM: <span class="${settledClass}">${formatPnl(settledVal)}</span>`;
             }
 
             // --- 期货模式：动态杠杆（持仓市值 / 占用保证金） ---
