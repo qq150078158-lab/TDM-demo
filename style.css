@@ -58,6 +58,30 @@ h3 {
     flex-wrap: wrap;
 }
 
+/* --- 左侧控制区：水平分割线 --- */
+.control-divider {
+    align-self: stretch;
+    flex: 0 0 auto;
+    height: 1px;
+    min-height: 1px;
+    margin: 0;
+    padding: 0;
+    border: none;
+
+    /* 两端 10% 做透明渐隐 */
+    background-color: transparent;
+    background-image: linear-gradient(
+        to right,
+        rgba(74, 74, 74, 0) 0%,
+        #4a4a4a 10%,
+        #4a4a4a 90%,
+        rgba(74, 74, 74, 0) 100%
+    );
+
+    /* 纯实线、不渐隐
+    /* background-color: #444; */
+}
+
 /* 右侧操作区（生成按钮等） */
 .control-section-right {
     display: flex;
