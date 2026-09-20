@@ -29,6 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const allowFloatingProfitToOpenCheckbox = document.getElementById('allow-floating-profit-to-open');
     let savedLeverageConfig = null;
 
+    // --- 手续费与最大回撤 ---
+    const openFeeRateInput = document.getElementById('open-fee-rate');
+    const closeFeeRateInput = document.getElementById('close-fee-rate');
+    const useMaxDrawdownCheckbox = document.getElementById('use-max-drawdown');
+    const maxDrawdownLimitInput = document.getElementById('max-drawdown-limit');
+
     // --- 版本与选项的配置映射 ---
     const VERSION_CONFIG = {
         'v0305_small': {
@@ -252,6 +258,19 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDropdownOptions();
 
 
+    // --- 初始化最大回撤控件状态 ---
+    function syncMaxDrawdownControls() {
+        const enabled = useMaxDrawdownCheckbox.checked;
+        maxDrawdownLimitInput.disabled = !enabled;
+        if (!enabled) {
+            // 保留原值
+        }
+    }
+
+    syncMaxDrawdownControls();
+
+    useMaxDrawdownCheckbox.addEventListener('change', syncMaxDrawdownControls);
+
     // 初始化杠杆控件状态
     syncLeverageControls({ preserveValues: true });
 
@@ -357,6 +376,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let maintenanceMarginRate = parseFloat(maintenanceMarginRateInput.value) || 0.1;
         const allowFloatingProfitToOpen = allowFloatingProfitToOpenCheckbox.checked;
 
+        // --- 手续费与最大回撤 ---
+        const openFeeRate = parseFloat(openFeeRateInput.value) / 100;   // 百分比转小数
+        const closeFeeRate = parseFloat(closeFeeRateInput.value) / 100; // 百分比转小数
+        const useMaxDrawdown = useMaxDrawdownCheckbox.checked;
+        let maxDrawdownLimit = null;
+        if (useMaxDrawdown) {
+            maxDrawdownLimit = parseFloat(maxDrawdownLimitInput.value) / 100; // 百分比转小数
+        }
+
         // 未启用杠杆时，强制 1 倍
         if (!useLeverage) {
             minLeverage = 1;
@@ -400,6 +428,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     max_leverage: maxLeverage,
                     maintenance_margin_rate: maintenanceMarginRate,
                     allow_floating_profit_to_open: allowFloatingProfitToOpen,
+                    open_fee_rate: openFeeRate,
+                    close_fee_rate: closeFeeRate,
+                    use_max_drawdown: useMaxDrawdown,
+                    max_drawdown_limit: maxDrawdownLimit,
                 })
             });
 
@@ -671,8 +703,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let tooltipHtml = `<b>${new Date(klineInfo.timestamp * 1000).toLocaleString()}</b><br/>`;
                     tooltipHtml += `Open: ${klineInfo.open.toFixed(2)} | High: ${klineInfo.high.toFixed(2)} | Low: ${klineInfo.low.toFixed(2)} | Close: ${klineInfo.close.toFixed(2)}<hr style="margin: 5px 0; border-color: #555;">`;
-                    // tooltipHtml += `Volume: ${formatVolume(klineInfo.volume)}<hr style="margin: 5px 0; border-color: #555;">`;
-                    // tooltipHtml += `<b>Optimal Strategy:</b> ${formatAction(optimalAction)}<br/>`;
                     tooltipHtml += `<b>Model  Inference:</b> ${formatAction(modelAction)}`;
 
                     // 检查 assetValue 是否有效
