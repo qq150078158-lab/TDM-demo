@@ -883,11 +883,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // padding 长度
+        let contextLen = 128;
+        if (chartDataStore
+            && Array.isArray(chartDataStore.model_account_history)
+            && chartDataStore.model_account_history.length > 0) {
+            const firstStep = Number(chartDataStore.model_account_history[0].step);
+            if (Number.isFinite(firstStep) && firstStep >= 0) {
+                contextLen = firstStep;
+            }
+        }
+        const startIndex = Math.min(contextLen, actionsData.length);
+
         // 读取当前置信度阈值，与图表标记过滤逻辑保持一致
         const confidenceThreshold =
             parseFloat(document.getElementById('confidence-threshold').value) || 0.0;
 
-        actionsData.forEach((action, index) => {
+        actionsData.slice(startIndex).forEach((action, i) => {
+            // 使用切片后的局部索引 i 重建全局 step
+            const globalIndex = startIndex + i;
+
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
 
@@ -898,11 +913,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const lev = Number(action.leverage_ratio) || 0;
 
             // ---- 2. 判断是否会被模拟器“降级为 hold” ----
-            // 与 simulator.run_simulation 中的判断保持严格一致：
-            //   if confidence > threshold: action_to_execute = model_action.action_type
-            //   else: action_to_execute = "hold"
-            // 因此当 confidence <= threshold 且原始动作为 long/short 时，
-            // 该行会被模拟器忽略，此处以弱化样式 + 警示文本明示。
             const willBeForcedHold =
                 (actionType === 'long' || actionType === 'short') &&
                 confidence <= confidenceThreshold;
@@ -912,7 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // ---- 3. 复用已有的方向着色类 ----
-            // .log-pos-long / .log-pos-short / .log-pos-hold 已在 style.css 中定义
             const dirCls = `log-pos-${actionType}`;
 
             // ---- 4. 数值格式化：统一 4 位小数 ----
@@ -923,10 +932,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const confStr = confidence.toFixed(4);
 
             // ---- 5. 组装行 HTML ----
-            // 结构参考 ACCOUNT HISTORY：
-            //   Step N:  <TAG>  | Qty: ... | Lev: ... | Conf: ... <警示>
+            // Step N:  <TAG>  | Qty: ... | Lev: ... | Conf: ... <警示>
             let html =
-                `<span class="log-step">Step ${index}:</span>` +
+                `<span class="log-step">Step ${globalIndex}:</span>` +
                 `<span class="${dirCls}">${actionType.toUpperCase()}</span>` +
                 ` | Qty: ${qtyStr}` +
                 ` | Lev: ${levStr}` +
