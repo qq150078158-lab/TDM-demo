@@ -343,6 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const { modelMarkPoints, categories, klineValues, volumeValues, modelAssetCurve } = prepareChartData(chartDataStore);
 
         renderChart(modelChart, 'Model Inference', categories, klineValues, modelMarkPoints, volumeValues, modelAssetCurve);
+
+        // 同步刷新 MODEL RAW OUTPUT：
+        // confidence-threshold 变化会改变“是否会被降级为 hold”的判定，因此需要按新阈值重新渲染弱化样式与警示文本
+        renderModelRawOutput('model-raw-output-content', chartDataStore.model_actions);
     }
 
 
@@ -355,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chartDataStore = null;
 
         // --- 清空日志区域 ---
+        document.getElementById('model-raw-output-content').innerHTML = '';
         document.getElementById('model-trade-log-content').innerHTML = '';
         document.getElementById('model-account-history-content').innerHTML = '';
 
@@ -532,6 +537,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="result-item-value">${stats.forced_close_count}</span>
                         </div>
                         <div class="result-item">
+                            <span class="result-item-label">Force Reduce:</span>
+                            <span class="result-item-value">${stats.force_reduce_count}</span>
+                        </div>
+                        <div class="result-item">
                             <span class="result-item-label">Max Leverage Used:</span>
                             <span class="result-item-value">${stats.max_leverage_used.toFixed(2)}x</span>
                         </div>
@@ -555,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderChart(modelChart, 'Model Inference', categories, klineValues, modelMarkPoints, volumeValues, modelAssetCurve);
 
             // --- 渲染详细日志 ---
+            renderModelRawOutput('model-raw-output-content', chartDataStore.model_actions);
             renderTradeLog('model-trade-log-content', chartDataStore.model_trade_log);
             renderAccountHistory('model-account-history-content', chartDataStore.model_account_history);
 
@@ -860,6 +870,92 @@ document.addEventListener('DOMContentLoaded', () => {
         chartInstance.setOption(option, true);
     }
 
+    // --- 渲染 模型原始输出 ---
+    function renderModelRawOutput(elementId, actionsData) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // 空数据保护
+        if (!actionsData || actionsData.length === 0) {
+            container.innerHTML = '<div>No model output available.</div>';
+            return;
+        }
+
+        // 读取当前置信度阈值，与图表标记过滤逻辑保持一致
+        const confidenceThreshold =
+            parseFloat(document.getElementById('confidence-threshold').value) || 0.0;
+
+        // action_type 的人类可读转译表
+        // 键为后端返回的小写枚举；值为“英文枚举 + 中文含义”的展示文本
+        const ACTION_TYPE_TRANSLATION = {
+            'long':  'LONG (开多/加多)',
+            'short': 'SHORT (开空/加空)',
+            'hold':  'HOLD (持仓观望)'
+        };
+
+        actionsData.forEach((action, index) => {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            // ---- 1. 字段解析与安全取值 ----
+            const actionType = (action.action_type || 'hold').toLowerCase();
+            const confidence = Number(action.confidence) || 0;
+            const qty = Number(action.quantity_ratio) || 0;
+            const lev = Number(action.leverage_ratio) || 0;
+
+            // ---- 2. 判断是否会被模拟器“降级为 hold” ----
+            // 与 simulator.run_simulation 中的判断保持严格一致：
+            //   if confidence > threshold: action_to_execute = model_action.action_type
+            //   else: action_to_execute = "hold"
+            // 因此当 confidence <= threshold 且原始动作为 long/short 时，
+            // 该行会被模拟器忽略，此处以弱化样式 + 警示文本明示。
+            const willBeForcedHold =
+                (actionType === 'long' || actionType === 'short') &&
+                confidence <= confidenceThreshold;
+
+            if (willBeForcedHold) {
+                logEntry.classList.add('log-entry-muted');
+            }
+
+            // ---- 3. 复用已有的方向着色类 ----
+            // .log-pos-long / .log-pos-short / .log-pos-hold 已在 style.css 中定义
+            const dirCls = `log-pos-${actionType}`;
+
+            // ---- 4. 数值格式化：统一 4 位小数 ----
+            // 数量带符号显示，便于直观区分加仓 (+) 与减仓 (-)
+            const qtySign = qty >= 0 ? '+' : '';
+            const qtyStr = `${qtySign}${qty.toFixed(4)}`;
+            const levStr = lev.toFixed(4);
+            const confStr = confidence.toFixed(4);
+
+            // ---- 5. 组装行 HTML ----
+            // 结构参考 ACCOUNT HISTORY：
+            //   Step N:  <TAG>  | Qty: ... | Lev: ... | Conf: ... | <转译>  <警示>
+            let html =
+                `<span class="log-step">Step ${index}:</span>` +
+                `<span class="${dirCls}">${actionType.toUpperCase()}</span>` +
+                ` | Qty: ${qtyStr}` +
+                ` | Lev: ${levStr}` +
+                ` | Conf: ${confStr}`;
+
+            // 追加人类可读转译
+            const translated = ACTION_TYPE_TRANSLATION[actionType] || actionType.toUpperCase();
+            html += ` | <span class="log-translation">${translated}</span>`;
+
+            // 若会被模拟器降级为 hold，追加警示
+            if (willBeForcedHold) {
+                html += ` <span class="log-warn">` +
+                        `[Conf ${confStr} ≤ ${confidenceThreshold.toFixed(4)} → forced HOLD]` +
+                        `</span>`;
+            }
+
+            logEntry.innerHTML = html;
+            container.appendChild(logEntry);
+        });
+    }
+
     // --- 渲染日志的辅助函数 ---
     function renderTradeLog(elementId, logData) {
         const container = document.getElementById(elementId);
@@ -999,12 +1095,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const lev = Number(entry.leverage) || 1;
             const dd = Number(entry.drawdown) || 0;
             const settledVal = Number(entry.settled_pnl);
+            const lockedProfit = Number(entry.locked_profit) || 0;
 
             // --- 基础字段：总资产 / 现金 ---
             let html =
                 `<span class="log-step">Step ${entry.step}:</span>` +
                 `Assets: ${totalAssets.toFixed(2)}` +
                 ` | Cash: ${cash.toFixed(2)}`;
+
+            // 锁定的浮盈
+            if (lockedProfit > 1e-9) {
+                html += ` | Locked: ${lockedProfit.toFixed(2)}`;
+            }
 
             // --- 持仓市值（有持仓时展示） ---
             // 语义修正：此处原为 "Equity"，但实际展示的是 position_market_value，
