@@ -396,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('model-raw-output-content').innerHTML = '';
         document.getElementById('model-trade-log-content').innerHTML = '';
         document.getElementById('model-account-history-content').innerHTML = '';
+        document.getElementById('model-details-content').innerHTML = '';
 
         // --- 清空结果区域 ---
         setEmptyModelResults();
@@ -612,6 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderModelRawOutput('model-raw-output-content', chartDataStore.model_actions);
             renderTradeLog('model-trade-log-content', chartDataStore.model_trade_log);
             renderAccountHistory('model-account-history-content', chartDataStore.model_account_history);
+            renderDetails('model-details-content', chartDataStore.model_account_history);
 
         } catch (error) {
             console.error("获取或渲染数据时出错:", error);
@@ -915,7 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chartInstance.setOption(option, true);
     }
 
-    // --- 渲染 模型原始输出 ---
+    // --- 渲染模型原始输出 ---
     function renderModelRawOutput(elementId, actionsData) {
         const container = document.getElementById(elementId);
         if (!container) return;
@@ -997,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 渲染日志的辅助函数 ---
+    // --- 渲染交易日志 ---
     function renderTradeLog(elementId, logData) {
         const container = document.getElementById(elementId);
         if (!container) return;
@@ -1199,6 +1201,55 @@ document.addEventListener('DOMContentLoaded', () => {
             if (entry.is_forced_close) {
                 html += ` | <span class="log-warn">[FORCED CLOSE]</span>`;
             }
+
+            logEntry.innerHTML = html;
+            container.appendChild(logEntry);
+        });
+    }
+
+    // --- 渲染 DETAILS ---
+    function renderDetails(elementId, historyData) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        container.innerHTML = '';
+        if (!historyData || historyData.length === 0) {
+            container.innerHTML = '<div>No details available.</div>';
+            return;
+        }
+
+        historyData.forEach(entry => {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            // 强平类事件整行使用浅红底色
+            if (entry.is_forced_close) {
+                logEntry.classList.add('log-entry-danger');
+            }
+
+            // 取出本步的 details 文本；后端在无动作时已写入 "No trade action."，此处做兜底
+            const detailsText = (entry.details !== undefined && entry.details !== null && entry.details !== '')
+                ? String(entry.details)
+                : 'No trade action.';
+
+            // 识别"被跳过"的语义
+            const isSkipped = /\bskipped\b/i.test(detailsText)
+                           || /\bforced hold\b/i.test(detailsText);
+
+            if (isSkipped) {
+                // 弱化展示被跳过的步骤
+                logEntry.classList.add('log-entry-muted');
+            }
+
+            // 组装行：Step N: [SKIPPED] <details 文本>
+            let html = `<span class="log-step">Step ${entry.step}:</span>`;
+
+            if (isSkipped) {
+                html += `<span class="log-warn">[SKIPPED]</span> `;
+            }
+
+            // 使用 span 包裹正文
+            html += `<span class="log-details-text">${detailsText}</span>`;
 
             logEntry.innerHTML = html;
             container.appendChild(logEntry);

@@ -643,3 +643,11 @@ a.info-item {
     color: #b0b0b0;
     font-style: italic;
 }
+
+/* DETAILS 允许换行，保持等宽字体 */
+.log-details-text {
+    display: inline !important;
+    white-space: normal;
+    word-break: break-word;
+    color: #cfcfcf;
+}
