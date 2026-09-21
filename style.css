@@ -170,6 +170,56 @@ h3 {
     height: 0;
 }
 
+.select-with-tip {
+    position: relative;
+    display: inline-block;
+}
+
+.select-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+
+    min-width: 380px;
+    max-width: 520px;
+    white-space: normal;
+    word-break: normal;
+
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+
+    font-size: 12px;
+    line-height: 1.7;
+    text-align: left;
+    font-weight: normal;
+
+    z-index: 100;
+
+    pointer-events: none;
+}
+
+.select-tooltip > div {
+    margin-bottom: 4px;
+}
+.select-tooltip > div:last-child {
+    margin-bottom: 0;
+}
+
+.select-tooltip b {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+.select-with-tip:hover .select-tooltip {
+    display: block;
+}
+
 .slider {
     position: absolute;
     cursor: pointer;
@@ -567,7 +617,7 @@ a.info-item {
 }
 
 
-/* --- 为了让禁用的数字输入和开关更明显 --- */
+/* --- 禁用的数字输入和开关更明显 --- */
 .controls input:disabled,
 .controls select:disabled {
     opacity: 0.5;
