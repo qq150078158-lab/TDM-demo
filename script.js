@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const useMaxDrawdownCheckbox = document.getElementById('use-max-drawdown');
     const maxDrawdownLimitInput = document.getElementById('max-drawdown-limit');
 
+    // --- 仓位执行模式 model / half / full ---
+    const quantityRatioTypeSelect = document.getElementById('quantity-ratio-type');
+
     // --- 版本与选项的配置映射 ---
     const VERSION_CONFIG = {
         'v0305_small': {
@@ -390,6 +393,9 @@ document.addEventListener('DOMContentLoaded', () => {
             maxDrawdownLimit = parseFloat(maxDrawdownLimitInput.value) / 100; // 百分比转小数
         }
 
+        // --- 执行模式 ---
+        const quantityRatioType = quantityRatioTypeSelect.value;
+
         // 未启用杠杆时，强制 1 倍
         if (!useLeverage) {
             minLeverage = 1;
@@ -437,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     close_fee_rate: closeFeeRate,
                     use_max_drawdown: useMaxDrawdown,
                     max_drawdown_limit: maxDrawdownLimit,
+                    quantity_ratio_type: quantityRatioType,
                 })
             });
 
@@ -513,6 +520,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const leverageText = config.use_leverage
                         ? `${config.min_leverage.toFixed(1)}x - ${config.max_leverage.toFixed(1)}x`
                         : 'Disabled';
+
+                    html += `
+                        <div class="result-item">
+                            <span class="result-item-label">Mode:</span>
+                            <span class="result-item-value">${config.quantity_ratio_type || 'model'}</span>
+                        </div>
+                    `;
 
                     html += `
                         <div class="result-item">
