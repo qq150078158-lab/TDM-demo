@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 仓位执行模式 model / half / full ---
     const quantityRatioTypeSelect = document.getElementById('quantity-ratio-type');
+    // null 表示当前处于 model 模式（或尚未发生联动切换）；
+    // true/false 表示当前处于非 model 模式，并已记住之前用户的选择，用于切回时恢复
+    let savedUseLeverageBeforeModeLock = null;
 
     // --- 版本与选项的配置映射 ---
     const VERSION_CONFIG = {
@@ -128,6 +131,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintenanceMarginRateInput.dataset.auto = 'true';
                 maintenanceMarginRateInput.value =
                     calcDefaultMaintenanceMarginRate(maxLev).toFixed(4);
+            }
+        }
+    }
+
+    // Mode 与 Use Leverage 联动
+    function syncQuantityRatioTypeControls() {
+        const mode = quantityRatioTypeSelect.value;
+        const isLeverageForcedOff = (mode !== 'model');
+
+        if (isLeverageForcedOff) {
+            if (savedUseLeverageBeforeModeLock === null) {
+                savedUseLeverageBeforeModeLock = useLeverageCheckbox.checked;
+            }
+            useLeverageCheckbox.checked = false;
+            useLeverageCheckbox.disabled = true;
+            syncLeverageControls();
+        } else {
+            useLeverageCheckbox.disabled = false;
+            if (savedUseLeverageBeforeModeLock !== null) {
+                useLeverageCheckbox.checked = savedUseLeverageBeforeModeLock;
+                savedUseLeverageBeforeModeLock = null;
+                syncLeverageControls();
             }
         }
     }
@@ -281,6 +306,12 @@ document.addEventListener('DOMContentLoaded', () => {
     useLeverageCheckbox.addEventListener('change', () => {
         syncLeverageControls();
     });
+
+    // Mode 联动杠杆
+    syncQuantityRatioTypeControls();
+
+    // Mode 变化时触发联动
+    quantityRatioTypeSelect.addEventListener('change', syncQuantityRatioTypeControls);
 
     // 最大杠杆变化
     maxLeverageInput.addEventListener('input', () => {
