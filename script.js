@@ -887,14 +887,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const confidenceThreshold =
             parseFloat(document.getElementById('confidence-threshold').value) || 0.0;
 
-        // action_type 的人类可读转译表
-        // 键为后端返回的小写枚举；值为“英文枚举 + 中文含义”的展示文本
-        const ACTION_TYPE_TRANSLATION = {
-            'long':  'LONG (开多/加多)',
-            'short': 'SHORT (开空/加空)',
-            'hold':  'HOLD (持仓观望)'
-        };
-
         actionsData.forEach((action, index) => {
             const logEntry = document.createElement('div');
             logEntry.className = 'log-entry';
@@ -932,17 +924,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ---- 5. 组装行 HTML ----
             // 结构参考 ACCOUNT HISTORY：
-            //   Step N:  <TAG>  | Qty: ... | Lev: ... | Conf: ... | <转译>  <警示>
+            //   Step N:  <TAG>  | Qty: ... | Lev: ... | Conf: ... <警示>
             let html =
                 `<span class="log-step">Step ${index}:</span>` +
                 `<span class="${dirCls}">${actionType.toUpperCase()}</span>` +
                 ` | Qty: ${qtyStr}` +
                 ` | Lev: ${levStr}` +
                 ` | Conf: ${confStr}`;
-
-            // 追加人类可读转译
-            const translated = ACTION_TYPE_TRANSLATION[actionType] || actionType.toUpperCase();
-            html += ` | <span class="log-translation">${translated}</span>`;
 
             // 若会被模拟器降级为 hold，追加警示
             if (willBeForcedHold) {
