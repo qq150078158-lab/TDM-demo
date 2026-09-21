@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- 期货模式：动态杠杆（持仓市值 / 占用保证金） ---
             if (useLeverage && posDir !== 'hold') {
-                html += ` | Lev: ${lev.toFixed(2)}x`;
+                html += ` | dLev: ${lev.toFixed(2)}x`;
             }
 
             // --- 回撤（非零时展示） ---
