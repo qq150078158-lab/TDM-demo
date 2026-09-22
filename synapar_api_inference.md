@@ -307,7 +307,7 @@ Simulated trading follows the rules below, which adapt to the controls in the re
    * If `allow_floating_profit_to_open=false`, unrealized profits are locked and cannot be used to open or add to positions.
 1. Fees
    * Opening and closing fees are charged on the notional value. Both rates are adjustable (default: open 0.5%, close 0.8%).
-1. MDD control (optional)
+1. MDD control
    * If `use_max_drawdown=true`, the simulator force-closes the position when drawdown exceeds the limit, then resets the peak for re-baselining. Trading continues afterwards.
 1. Mark-to-market
    * When leverage is used, positions are marked to market at each step before any trade. Profits or losses are settled into available funds, and the average open price is reset to the current close.
