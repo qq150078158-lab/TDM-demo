@@ -14,8 +14,8 @@ POST `https://tdm-demo.vercel.app/api/synapar_api_inference`
 
 ### **Headers**
 
-| Key | Value |
-| :---- | :---- |
+| Key          | Value            |
+|:-------------|:-----------------|
 | Content-Type | application/json |
 
 ### **Body**
@@ -47,24 +47,28 @@ The request body must be a JSON object containing the following fields:
 
 Single inference:
 
-\[
+```text
+[
   [timestamp, open, high, low, close, volume, amount],
   [timestamp, open, high, low, close, volume, amount],
   ...
-\]
+]
+```
 
 Batch inference:
 
-\[
-  \[
+```text
+[
+  [
     [timestamp, open, high, low, close, volume, amount],
     ...
-  \],
-  \[
+  ],
+  [
     [timestamp, open, high, low, close, volume, amount],
     ...
-  \]
-\]
+  ]
+]
+```
 
 Field meanings:
 
@@ -88,6 +92,7 @@ Requirements:
 
 ### **Request Example (curl)**
 
+```bash
 curl -X POST 'https://tdm-demo.vercel.app/api/synapar_api_inference' \
 -H 'Content-Type: application/json' \
 -d '{
@@ -106,12 +111,13 @@ curl -X POST 'https://tdm-demo.vercel.app/api/synapar_api_inference' \
   "close_fee_rate": 0.008,
   "use_max_drawdown": false,
   "max_drawdown_limit": 0.2,
-  "kline_data": \[
-    \[1678886400, 100, 105, 98, 102, 10000, 1020000\],
-    \[1678972800, 102, 110, 101, 108, 12000, 1296000\],
-    \[1679059200, 108, 109, 105, 106, 8000, 856000\]
-  \]
+  "kline_data": [
+    [1678886400, 100, 105, 98, 102, 10000, 1020000],
+    [1678972800, 102, 110, 101, 108, 12000, 1296000],
+    [1679059200, 108, 109, 105, 106, 8000, 856000]
+  ]
 }'
+```
 
 *Note: The **kline\_data** in the example above is for format illustration only. In actual use, **kline_data** must contain at least **256** records and at most **1024** records; if **kline_window_size** is used, the server will truncate to the last **N** records.*
 
@@ -134,8 +140,9 @@ The model's output comprises three key elements: direction, quantity, and levera
 
 Single success response example:
 
+```json
 {
-  "model_actions": \[
+  "model_actions": [
     {
       "action_type": "hold",
       "quantity_ratio": 0.0,
@@ -157,7 +164,7 @@ Single success response example:
     "total_kline_steps": 256,
     "context_len": 128
   },
-  "model_trade_log": \[
+  "model_trade_log": [
     {
       "step": 130,
       "type": "open",
@@ -173,8 +180,8 @@ Single success response example:
       "position_after": 47.39,
       "avg_open_price_after": 105.5
     }
-  \],
-  "model_account_history": \[
+  ],
+  "model_account_history": [
     {
       "step": 128,
       "total_assets": 10000.0,
@@ -198,12 +205,12 @@ Single success response example:
       "is_forced_close": false,
       "locked_profit": 0.0
     }
-  \],
-  "model_asset_curve": \[
+  ],
+  "model_asset_curve": [
     10000.0,
     10000.0,
     14500.0
-  \],
+  ],
   "simulation_config": {
     "quantity_ratio_type": "model",
     "use_leverage": false,
@@ -227,11 +234,13 @@ Single success response example:
   "how_to_understand_actions": "...",
   "model_version": "..."
 }
+```
 
 Batch success response example:
 
+```json
 {
-  "batch_results": \[
+  "batch_results": [
     {
       "model_actions": [],
       "model_simulation_results": {},
@@ -243,8 +252,9 @@ Batch success response example:
       "how_to_understand_actions": "...",
       "model_version": "..."
     }
-  \]
+  ]
 }
+```
 
 ### **Response Field Description**
 
@@ -263,15 +273,19 @@ Batch success response example:
 ### **Failure Response**
 
 * **400 Bad Request**: The request body does not comply with the specification (e.g., missing **kline\_data** or **frequency**, or incorrect **kline\_data** shape).  
+```json
   {  
       "detail": "Request body error"  
   }
+```
 
 * **405 Method Not Allowed**: An HTTP method other than POST was used.  
 * **500 Internal Server Error / 502 Bad Gateway / 504 Gateway Timeout**: An error occurred, e.g. inference failure, cold start timeout, etc.  
+```json
   {  
       "detail": "..."
   }  
+```
 
 ## **Trading Simulator Summary**
 
