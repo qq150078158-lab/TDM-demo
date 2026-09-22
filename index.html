@@ -13,15 +13,16 @@
         <div class="info-item">
             Special Notes
             <div class="info-tooltip">
-1. Due to the extreme scarcity of high-frequency (i.e., sub-daily) data within the training set, the current version exhibits poor performance on high-frequency data.
-2. For identical inputs, the model's generated outputs are precisely reproducible.
-3. The model's output comprises three key elements: direction, quantity, and leverage.
-3.1 Direction: Includes three distinct instructions — Long, Short, and Hold — along with their respective confidence.
-3.2 Quantity: A floating-point value within the [-1, 1] range. A positive value signifies the proportion of available capital to be used for opening or increasing a position. A negative value signifies the proportion of current holdings to be liquidated or reduced.
-3.3 Leverage: A floating-point value within the [0, 1] range, indicating the proportion of the permissible leverage (e.g., within a 1x to 20x range) to apply to the trade. This value is not applicable when closing or reducing a position.
-4. Synapar is a Trading Decision Model (TDM). It aims to establish a general-purpose infrastructure for generating a theoretically near-optimal trading instruction for the latest time step, based on a k-line window size of a given length — specifically, financial time-series data of a particular frequency.
-5. Admittedly, trading rules differ among various financial markets and products, and investors operate under diverse self-imposed constraints. Therefore, the application of TDM-generated trading instructions necessitates flexible adaptation in accordance with the specific context.
-6. Future iterations of the model are planned to cover major global financial markets and products, including equities, futures, forex, and cryptocurrencies. The vision is for Synapar to become a general-purpose infrastructure for AI-generated trading instructions, accessible via Web / API services.
+1. The dataset used for model training extends up to November 31, 2025, covering A-shares, US stocks, Hong Kong stocks, and a subset of stocks from Europe and Japan.
+2. Due to the extreme scarcity of high-frequency (i.e., sub-daily) data within the training set, the current version exhibits poor performance on high-frequency data.
+3. For identical inputs, the model's generated outputs are precisely reproducible.
+4. The model's output comprises three key elements: direction, quantity, and leverage.
+4.1 Direction: Includes three distinct instructions — Long, Short, and Hold — along with their respective confidence.
+4.2 Quantity: A floating-point value within the [-1, 1] range. A positive value signifies the proportion of available capital to be used for opening or increasing a position. A negative value signifies the proportion of current holdings to be liquidated or reduced.
+4.3 Leverage: A floating-point value within the [0, 1] range, indicating the proportion of the permissible leverage (e.g., within a 1x to 20x range) to apply to the trade. This value is not applicable when closing or reducing a position.
+5. Synapar is a Trading Decision Model (TDM). It aims to establish a general-purpose infrastructure for generating a theoretically near-optimal trading instruction for the latest time step, based on a k-line window size of a given length — specifically, financial time-series data of a particular frequency.
+6. Admittedly, trading rules differ among various financial markets and products, and investors operate under diverse self-imposed constraints. Therefore, the application of TDM-generated trading instructions necessitates flexible adaptation in accordance with the specific context.
+7. Future iterations of the model are planned to cover major global financial markets and products, including equities, futures, forex, and cryptocurrencies. The vision is for Synapar to become a general-purpose infrastructure for AI-generated trading instructions, accessible via Web / API services.
             </div>
         </div>
 
@@ -29,39 +30,29 @@
             Trading Simulator
             <div class="info-tooltip">
 Simulated trading follows the rules below, which adapt to the controls you set.
-
 1. Direction
    - Long and short positions are both supported.
    - Short selling is allowed only if **Short Allowed** is enabled.
-
 2. Reversal signals
    - When the model issues a signal opposite to the current position, the simulator closes the entire position and immediately opens a new position in the opposite direction.
-
 3. Position sizing mode
    - **model**: follow the model’s output. A positive quantity_ratio opens or adds using that proportion of available funds; a negative quantity_ratio reduces that proportion of the current holdings. Leverage is applied only if **Use Leverage** is enabled.
    - **half**: open/add with 50% of available funds; reduce 50% of holdings. Leverage is forced to 1x.
    - **full**: open/add with 100% of available funds; reduce 100% of holdings. Leverage is forced to 1x.
-
 4. Leverage (only in `model` mode and when **Use Leverage** is enabled)
    - Actual leverage = min_leverage + leverage_ratio × (max_leverage − min_leverage), where leverage_ratio is the model’s output in [0, 1].
    - The **Maintenance Margin Ratio** determines when forced reduction or liquidation occurs. Its default value is 1 / max_leverage / 2.
    - If **Floating Profit to Open** is disabled, unrealized profits are locked and cannot be used to open or add to positions.
-
 5. Fees
    - Opening and closing fees are charged on the notional value. Both rates are adjustable (default: open 0.5%, close 0.8%).
-
 6. MDD control (optional)
    - If **Enable MDD** is checked, the simulator force-closes the position when drawdown exceeds the limit, then resets the peak for re-baselining. Trading continues afterwards.
-
 7. Mark-to-market
    - When leverage is used, positions are marked to market at each step before any trade. Profits or losses are settled into available funds, and the average open price is reset to the current close.
-
 8. Execution & valuation price
    - Both the simulated execution price and the asset valuation price use the current K-line’s closing price.
-
 9. Forced reduction & liquidation
    - If total equity falls below the maintenance margin requirement or available funds become negative, the simulator forcibly reduces the position until the requirement is met or the position is closed. Such events appear in the logs as FORCE REDUCE or FORCE CLOSE.
-
 10. Initial k-line window size
     - No trades are executed in the first 128 steps to ensure sufficient historical features. The effective trading steps equal the loaded K-line length minus 128, and are displayed alongside the **Total Return** metric.
             </div>
@@ -82,6 +73,10 @@ Simulated trading follows the rules below, which adapt to the controls you set.
 For any inquiries, please contact us at qq150078158@gmail.com
             </div>
         </div>
+
+        <a href="https://doi.org/10.5281/zenodo.20550550" target="_blank" class="info-item">
+            Dataset
+        </a>
 
         <a href="#" target="_blank" class="info-item">
             Preprint
