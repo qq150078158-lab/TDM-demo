@@ -119,7 +119,7 @@ curl -X POST 'https://tdm-demo.vercel.app/api/synapar_api_inference' \
 }'
 ```
 
-*Note: The `kline\_data` in the example above is for format illustration only. In actual use, `kline_data` must contain at least `256` records and at most `1024` records; if `kline_window_size` is used, the server will truncate to the last `N` records.*
+*Note: The `kline_data` in the example above is for format illustration only. In actual use, `kline_data` must contain at least `256` records and at most `1024` records; if `kline_window_size` is used, the server will truncate to the last `N` records.*
 
 ## **Response**
 
@@ -272,7 +272,7 @@ Batch success response example:
 
 ### **Failure Response**
 
-* **400 Bad Request**: The request body does not comply with the specification (e.g., missing `kline\_data` or `frequency`, or incorrect `kline\_data` shape).  
+* **400 Bad Request**: The request body does not comply with the specification (e.g., missing `kline_data` or `frequency`, or incorrect `kline_data` shape).  
 ```json
   {  
       "detail": "Request body error"  
