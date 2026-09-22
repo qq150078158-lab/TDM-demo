@@ -41,7 +41,7 @@ The request body must be a JSON object containing the following fields:
 | use\_max\_drawdown                | Bool                                                          | No       | false                | Whether to enable MDD risk control. When enabled, the simulator force-closes the position and resets the peak when drawdown exceeds **max_drawdown_limit**.                                                                                                                                                                                                                                                                                     |
 | max\_drawdown\_limit              | Number                                                        | No       | 0.20                 | Maximum drawdown limit. Only effective when **use_max_drawdown=true**. 0.20 means 20%. Range \[0.05, 0.99\].                                                                                                                                                                                                                                                                                                                                    |
 
-**Note:** The server does not download market data. The caller must provide complete, continuous, time-ascending K-line data in **kline_data**.
+*Note: The server does not download market data. The caller must provide complete, continuous, time-ascending K-line data in **kline_data**.*
 
 ### **K-line Data Format**
 
@@ -68,15 +68,15 @@ Batch inference:
 
 Field meanings:
 
-| Column Index | Field     | Description                                                    |
-|:-------------|:----------|:---------------------------------------------------------------|
-| 0            | timestamp | Unix timestamp in seconds.                                     |
-| 1            | open      | Opening price.                                                 |
-| 2            | high      | Highest price.                                                 |
-| 3            | low       | Lowest price.                                                  |
-| 4            | close     | Closing price.                                                 |
-| 5            | volume    | Trading volume.                                                |
-| 6            | amount    | Trading amount. Can be approximated as volume * average price. |
+| Column Index | Field     | Description                                                         |
+|:-------------|:----------|:--------------------------------------------------------------------|
+| 0            | timestamp | Unix timestamp in seconds.                                          |
+| 1            | open      | Opening price.                                                      |
+| 2            | high      | Highest price.                                                      |
+| 3            | low       | Lowest price.                                                       |
+| 4            | close     | Closing price.                                                      |
+| 5            | volume    | Trading volume.                                                     |
+| 6            | amount    | Trading amount. Can be approximated as **volume \* average price**. |
 
 Requirements:
 
@@ -281,36 +281,36 @@ Simulated trading follows the rules below, which adapt to the controls in the re
 * Long and short positions are both supported.
 * Short selling is allowed only if **allow_short=true**.
 
-1. Reversal signals
+2. Reversal signals
 * When the model issues a signal opposite to the current position, the simulator closes the entire position and immediately opens a new position in the opposite direction.
 
-1. Position sizing mode
+3. Position sizing mode
 * **model**: follow the model's output. A positive **quantity_ratio** opens or adds using that proportion of available funds; a negative **quantity_ratio** reduces that proportion of the current holdings. Leverage is applied only if **use_leverage=true**.
 * **half**: open/add with 50% of available funds; reduce 50% of holdings. Leverage is forced to 1x.
 * **full**: open/add with 100% of available funds; reduce 100% of holdings. Leverage is forced to 1x.
 
-1. Leverage
+4. Leverage
 * Only effective in **model** mode and when **use_leverage=true**.
 * Actual leverage = **min_leverage + leverage_ratio × (max_leverage − min_leverage)**.
 * **maintenance_margin_rate** determines when forced reduction or liquidation occurs. Its default value is **1 / max_leverage / 2**.
 * If **allow_floating_profit_to_open=false**, unrealized profits are locked and cannot be used to open or add to positions.
 
-1. Fees
+5. Fees
 * Opening and closing fees are charged on the notional value. Both rates are adjustable (default: open 0.5%, close 0.8%).
 
-1. MDD control (optional)
+6. MDD control (optional)
 * If **use_max_drawdown=true**, the simulator force-closes the position when drawdown exceeds the limit, then resets the peak for re-baselining. Trading continues afterwards.
 
-1. Mark-to-market
+7. Mark-to-market
 * When leverage is used, positions are marked to market at each step before any trade. Profits or losses are settled into available funds, and the average open price is reset to the current close.
 
-1. Execution & valuation price
+8. Execution & valuation price
 * Both the simulated execution price and the asset valuation price use the current K-line's closing price.
 
-1. Forced reduction & liquidation
+9. Forced reduction & liquidation
 * If total equity falls below the maintenance margin requirement or available funds become negative, the simulator forcibly reduces the position until the requirement is met or the position is closed. Such events appear in the logs as **FORCE REDUCE** or **FORCE CLOSE**.
 
-1. Initial k-line window size
+10. Initial k-line window size
 * No trades are executed in the first **128** steps to ensure sufficient historical features. The effective trading steps equal the loaded K-line length minus **128**, and are displayed alongside the **Total Return** metric.
 
 ## **Disclaimer**
