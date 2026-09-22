@@ -13,67 +13,73 @@
         <div class="info-item">
             Special Notes
             <div class="info-tooltip">
-1. As the project is currently in the preliminary validation stage of its technical approach and model efficacy, the present version is a minimal-size test build.
-2. The current model was trained exclusively on a subset of historical A-stocks and BTC data. Consequently, its performance in non-A-stocks markets is expected to be comparatively weaker, although it still retains a degree of generalization capability.
-3. Due to the extreme scarcity of high-frequency (i.e., sub-daily) data within the training set, the current version exhibits poor performance on high-frequency data.
-4. For identical inputs, the model's generated outputs are precisely reproducible.
-5. A longer maximum context length generally correlates with higher end-point returns.
-6. The model's output comprises three key elements: direction, quantity, and leverage.
-6.1 Direction: Includes three distinct instructions — Long, Short, and Hold — along with their respective confidence scores.
-6.2 Quantity: A floating-point value within the [-1, 1] range. A positive value signifies the proportion of available capital to be used for opening or increasing a position. A negative value signifies the proportion of current holdings to be liquidated or reduced.
-6.3 Leverage: A floating-point value within the [0, 1] range, indicating the proportion of the permissible leverage (e.g., within a 1x to 20x range) to apply to the trade. This value is not applicable when closing or reducing a position.
-7. Synapar is a Large Decision Model (LDM). It aims to establish a general-purpose infrastructure for generating a theoretically near-optimal trading instruction for the latest time step, based on a context of a given length — specifically, financial time-series data of a particular frequency. Admittedly, trading rules differ among various financial markets and products, and investors operate under diverse self-imposed constraints. Therefore, the application of LDM-generated trading instructions necessitates flexible adaptation in accordance with the specific context.
-8. Future iterations of the model are planned to cover major global financial markets and products, including equities, futures, forex, and cryptocurrencies. The vision is for Synapar to become a general-purpose infrastructure for AI-generated trading instructions, accessible via API services.
+1. Due to the extreme scarcity of high-frequency (i.e., sub-daily) data within the training set, the current version exhibits poor performance on high-frequency data.
+2. For identical inputs, the model's generated outputs are precisely reproducible.
+3. The model's output comprises three key elements: direction, quantity, and leverage.
+3.1 Direction: Includes three distinct instructions — Long, Short, and Hold — along with their respective confidence.
+3.2 Quantity: A floating-point value within the [-1, 1] range. A positive value signifies the proportion of available capital to be used for opening or increasing a position. A negative value signifies the proportion of current holdings to be liquidated or reduced.
+3.3 Leverage: A floating-point value within the [0, 1] range, indicating the proportion of the permissible leverage (e.g., within a 1x to 20x range) to apply to the trade. This value is not applicable when closing or reducing a position.
+4. Synapar is a Trading Decision Model (TDM). It aims to establish a general-purpose infrastructure for generating a theoretically near-optimal trading instruction for the latest time step, based on a k-line window size of a given length — specifically, financial time-series data of a particular frequency.
+5. Admittedly, trading rules differ among various financial markets and products, and investors operate under diverse self-imposed constraints. Therefore, the application of TDM-generated trading instructions necessitates flexible adaptation in accordance with the specific context.
+6. Future iterations of the model are planned to cover major global financial markets and products, including equities, futures, forex, and cryptocurrencies. The vision is for Synapar to become a general-purpose infrastructure for AI-generated trading instructions, accessible via Web / API services.
             </div>
         </div>
 
         <div class="info-item">
-            Trading Rules
+            Trading Simulator
             <div class="info-tooltip">
-For ease of understanding and comparison, simulated trading followed these simplified rules:
-1. T+0 bidirectional trading is adopted.
-2. No leverage is used.
-3. Opening and adding to positions are executed with 50% of the current available funds; reducing positions is done with 50% of the current holdings; closing positions are executed in their entirety.
-4. When the model issues a trading signal opposite to the current holding, it is treated as a signal to close the position and immediately open a reverse position.
-5. The simulated execution price and asset valuation price are both simplified to use the current K-line's closing price.
-6. The fee rates are set to 0.5% for opening positions and 0.8% for closing them.
-7. To ensure sufficient historical context, no trades are made in the first 128 steps of each sequence.
+Simulated trading follows the rules below, which adapt to the controls you set.
+
+1. Direction
+   - Long and short positions are both supported.
+   - Short selling is allowed only if **Short Allowed** is enabled.
+
+2. Reversal signals
+   - When the model issues a signal opposite to the current position, the simulator closes the entire position and immediately opens a new position in the opposite direction.
+
+3. Position sizing mode
+   - **model**: follow the model’s output. A positive quantity_ratio opens or adds using that proportion of available funds; a negative quantity_ratio reduces that proportion of the current holdings. Leverage is applied only if **Use Leverage** is enabled.
+   - **half**: open/add with 50% of available funds; reduce 50% of holdings. Leverage is forced to 1x.
+   - **full**: open/add with 100% of available funds; reduce 100% of holdings. Leverage is forced to 1x.
+
+4. Leverage (only in `model` mode and when **Use Leverage** is enabled)
+   - Actual leverage = min_leverage + leverage_ratio × (max_leverage − min_leverage), where leverage_ratio is the model’s output in [0, 1].
+   - The **Maintenance Margin Ratio** determines when forced reduction or liquidation occurs. Its default value is 1 / max_leverage / 2.
+   - If **Floating Profit to Open** is disabled, unrealized profits are locked and cannot be used to open or add to positions.
+
+5. Fees
+   - Opening and closing fees are charged on the notional value. Both rates are adjustable (default: open 0.5%, close 0.8%).
+
+6. MDD control (optional)
+   - If **Enable MDD** is checked, the simulator force-closes the position when drawdown exceeds the limit, then resets the peak for re-baselining. Trading continues afterwards.
+
+7. Mark-to-market
+   - When leverage is used, positions are marked to market at each step before any trade. Profits or losses are settled into available funds, and the average open price is reset to the current close.
+
+8. Execution & valuation price
+   - Both the simulated execution price and the asset valuation price use the current K-line’s closing price.
+
+9. Forced reduction & liquidation
+   - If total equity falls below the maintenance margin requirement or available funds become negative, the simulator forcibly reduces the position until the requirement is met or the position is closed. Such events appear in the logs as FORCE REDUCE or FORCE CLOSE.
+
+10. Initial k-line window size
+    - No trades are executed in the first 128 steps to ensure sufficient historical features. The effective trading steps equal the loaded K-line length minus 128, and are displayed alongside the **Total Return** metric.
             </div>
         </div>
 
         <div class="info-item">
             About Metrics
             <div class="info-tooltip">
-1. End-point Returns: Measured based on the number of steps (i.e., K-lines) rather than time span. The calculation length is the maximum context length minus 128. Furthermore, to ensure minimal feature construction, no trades are executed within the initial 128 steps.
+1. Total Return: The cumulative net return over the effective trading period. The effective trading period is the actual number of simulated steps, i.e., the loaded K-line length minus the initial context length (128 steps). No trades are executed in the initial context to ensure sufficient historical features. The number of effective steps is displayed next to the metric.
 2. Sharpe Ratio: The benchmark risk-free rate is set at 3%.
-3. Max Drawdown: For testing purposes, the simulated trading does not implement stop-loss risk control measures triggered by a maximum drawdown threshold. In real-world scenarios, this threshold should be set appropriately based on individual risk tolerance.
+3. MDD: For testing purposes, the simulated trading does not implement stop-loss risk control measures triggered by a maximum drawdown threshold. In real-world scenarios, this threshold should be set appropriately based on individual risk tolerance.
             </div>
         </div>
 
         <div class="info-item">
             Contact
             <div class="info-tooltip">
-Synapar is currently in the early phase of validating its technical approach and model efficacy. Preliminary studies indicate promising results, which are detailed in our arXiv preprint. The model is also available for validation and testing via our demo page and API. (Please note: The model currently underperforms in high-frequency tests due to the extreme scarcity of available intraday training data.)
-
-Synapar is a Large Decision Model (LDM) utilizing a novel dual-level Transformer (DLT) architecture for financial time-series trading decisions.
-
-The LDM, a concept introduced herein, aims to establish a general-purpose infrastructure for generating a theoretically near-optimal trading instruction for the latest time step, based on a context of a given length — specifically, financial time-series data of a particular frequency. Admittedly, trading rules differ among various financial markets and products, and investors operate under diverse self-imposed constraints. Therefore, the application of LDM-generated trading instructions necessitates flexible adaptation in accordance with the specific contexts.
-
-Our research priorities for the next six months are:
-1. To train commercial-grade models for four distinct markets (A-stocks, US-stocks, CN-futures, and Cryptocurrencies) and disseminate the corresponding research findings.
-2. To pursue early-stage commercialization of the trained models.
-
-Our planned model sizes are as follows:
------------------------------------------------------------------------------------------------------
-Size	        Purpose			                    Description
------------------------------------------------------------------------------------------------------
-mini	        Research & Experimentation	    Rapid prototyping, validation, and demonstration
-small       Segmented Markets		    e.g., A-stocks, US-stocks
-base	        Broad Asset Classes		    e.g., Stock market, Futures market
-large	Full Coverage		                    General-purpose LDM
------------------------------------------------------------------------------------------------------
-
-For any inquiries, please contact us at qq150078158@gmail.com.
+For any inquiries, please contact us at qq150078158@gmail.com
             </div>
         </div>
 
@@ -81,7 +87,7 @@ For any inquiries, please contact us at qq150078158@gmail.com.
             Preprint
         </a>
 
-        <a href="https://github.com/qq150078158-lab/synapar-0.1.0-mini-alpha-frontend/tree/main/synapar_api_inference.md" target="_blank" class="info-item">
+        <a href="https://github.com/qq150078158-lab/TDM-demo/blob/main/synapar_api_inference.md" target="_blank" class="info-item">
             API
         </a>
     </div>
@@ -128,7 +134,7 @@ For any inquiries, please contact us at qq150078158@gmail.com.
             <!-- --- 模型相关：第二行 --- -->
             <div class="control-row">
                 <div class="control-group">
-                    <label for="kline-window-size">Context Length</label>
+                    <label for="kline-window-size">Max K-line Window Size</label>
                     <input type="number" id="kline-window-size" value="512" min="256" max="1024" step="8">
                 </div>
 
@@ -242,7 +248,7 @@ For any inquiries, please contact us at qq150078158@gmail.com.
         <div id="simulation-results-area" style="display: flex; gap: 25px; align-items: flex-start; margin-left: 5px;">
             <!-- 模型策略结果 -->
             <div class="simulation-results" style="padding-left: 0; border-left: none;">
-                 <h4 style="margin:0; padding-bottom:5px; font-size: 14px; color: #b0b0b0;">Model Inference</h4>
+                 <h4 style="margin:0; padding-bottom:5px; font-size: 14px; color: #b0b0b0;">OOD BACKTESTING</h4>
                 <div id="model-results-content" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
         </div>

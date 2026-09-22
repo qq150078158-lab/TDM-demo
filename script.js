@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modelResultsContent) {
             modelResultsContent.innerHTML = `
                 <div class="result-item">
-                    <span class="result-item-label">End-point Returns:</span>
+                    <span class="result-item-label">Total Return:</span>
                     <span class="result-item-value"></span>
                 </div>
                 <div class="result-item">
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="result-item-value"></span>
                 </div>
                 <div class="result-item">
-                    <span class="result-item-label">Max Drawdown:</span>
+                    <span class="result-item-label">MDD:</span>
                     <span class="result-item-value"></span>
                 </div>
             `;
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderModelRawOutput('model-raw-output-content', chartDataStore.model_actions);
     }
 
-
+    // fetch
     async function fetchAndRender() {
         loader.style.display = 'block';
         runButton.disabled = true;
@@ -533,9 +533,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                // 有效交易步数
+                const steps = Number(results.effective_trading_steps);
+                const stepsLabel = Number.isFinite(steps) && steps > 0 ? ` (${steps} steps)` : '';
+
                 let html = `
                     <div class="result-item">
-                        <span class="result-item-label">End-point Returns:</span>
+                        <span class="result-item-label">Total Return${stepsLabel}:</span>
                         <span class="result-item-value">${(results.final_return_rate * 100).toFixed(2)}%</span>
                     </div>
                     <div class="result-item">
@@ -543,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="result-item-value">${results.sharpe_ratio.toFixed(3)}</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-item-label">Max Drawdown:</span>
+                        <span class="result-item-label">MDD:</span>
                         <span class="result-item-value">${(results.max_drawdown * 100).toFixed(2)}%</span>
                     </div>
                 `;
