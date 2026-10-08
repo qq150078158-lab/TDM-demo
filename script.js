@@ -1321,6 +1321,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- 置顶栏占位 ---
+    document.querySelectorAll('.topbar-link').forEach(link => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            const action = link.dataset.action;   // 'signin' | 'login'
+            // TODO: 在此处接入注册 / 登录路由或弹窗
+            console.log(`[topbar] ${action} clicked (not implemented yet)`);
+        });
+    });
+
     window.addEventListener('resize', () => {
         modelChart.resize();
     });
