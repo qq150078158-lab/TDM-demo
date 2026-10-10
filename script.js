@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="result-item-value"></span>
                 </div>
                 <div class="result-item">
-                    <span class="result-item-label">Sharp Ratio:</span>
+                    <span class="result-item-label">Sharpe Ratio:</span>
                     <span class="result-item-value"></span>
                 </div>
                 <div class="result-item">
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="result-item-value">${(results.final_return_rate * 100).toFixed(2)}%</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-item-label">Sharp Ratio:</span>
+                        <span class="result-item-label">Sharpe Ratio:</span>
                         <span class="result-item-value">${results.sharpe_ratio.toFixed(3)}</span>
                     </div>
                     <div class="result-item">
